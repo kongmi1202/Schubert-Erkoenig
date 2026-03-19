@@ -16,16 +16,16 @@ const OVERVIEW_EMBED = `https://www.youtube.com/embed/${OVERVIEW_VIDEO_ID}?rel=0
 const TIMBRE_OPTIONS = {
   pitch: ['높음', '낮음', '중간'],
   scale: ['장조', '단조'],
-  rhythm: ['빠름', '느림', '불규칙'],
-  timbre: ['부드러움', '거침', '밝음', '어두움'],
+  rhythm: ['짧음', '보통', '긺'],
+  timbre: ['얇음', '중간', '두꺼움'],
 }
 
 // 슈베르트의 실제 설계 비교표 (교육용)
 const SCHUBERT_TIMBRE_TABLE = {
-  해설자: { pitch: '낮음', scale: '단조', rhythm: '느림', timbre: '부드러움' },
-  아버지: { pitch: '낮음', scale: '단조', rhythm: '느림', timbre: '부드러움' },
-  아들: { pitch: '높음', scale: '단조', rhythm: '불규칙', timbre: '거침' },
-  마왕: { pitch: '중간', scale: '장조', rhythm: '빠름', timbre: '밝음(유혹)' },
+  해설자: { pitch: '낮음', scale: '단조', rhythm: '보통', timbre: '중간' },
+  아버지: { pitch: '낮음', scale: '단조', rhythm: '보통', timbre: '두꺼움' },
+  아들: { pitch: '높음', scale: '단조', rhythm: '짧음', timbre: '얇음' },
+  마왕: { pitch: '중간', scale: '장조', rhythm: '긺', timbre: '중간' },
 }
 
 // 반주 음원 placeholder (실제 URL로 교체 가능)
@@ -45,6 +45,7 @@ export default function Stage2AnalyticStep({ section = 'all' }) {
   const [plotCheckText, setPlotCheckText] = useState('')
   const [plotCheckError, setPlotCheckError] = useState('')
   const [showOverviewAnswers, setShowOverviewAnswers] = useState(false)
+  const [showTimbreCompare, setShowTimbreCompare] = useState(false)
   const o = state.stage2?.overview || {}
   const t = state.stage2?.timbre || {}
   const a = state.stage2?.accompaniment || {}
@@ -56,10 +57,23 @@ export default function Stage2AnalyticStep({ section = 'all' }) {
   const setOverview = (field, value) => actions.setField(`stage2.overview.${field}`, value)
   const setTimbre = (field, value) => actions.setField(`stage2.timbre.${field}`, value)
   const overviewAllFilled = Boolean(o.narrator?.trim() && o.father?.trim() && o.son?.trim() && o.erlking?.trim())
+  const timbreAllFilled = Boolean(
+    t?.character1 && t?.character2 &&
+    t?.c1Pitch && t?.c1Scale && t?.c1Rhythm && t?.c1Timbre &&
+    t?.c2Pitch && t?.c2Scale && t?.c2Rhythm && t?.c2Timbre,
+  )
 
   useEffect(() => {
     setShowOverviewAnswers(false)
   }, [o.narrator, o.father, o.son, o.erlking])
+
+  useEffect(() => {
+    setShowTimbreCompare(false)
+  }, [
+    t.character1, t.character2,
+    t.c1Pitch, t.c1Scale, t.c1Rhythm, t.c1Timbre,
+    t.c2Pitch, t.c2Scale, t.c2Rhythm, t.c2Timbre,
+  ])
 
   const handlePlotHelper = async () => {
     setPlotHelperLoading(true)
@@ -296,7 +310,20 @@ export default function Stage2AnalyticStep({ section = 'all' }) {
             ))}
           </div>
         )}
-        {(t.character1 && t.character2 && t.c1Pitch && t.c2Pitch) && (
+        <button
+          type="button"
+          onClick={() => setShowTimbreCompare(true)}
+          disabled={!timbreAllFilled}
+          className={[
+            'mt-4 rounded-lg px-3 py-2 text-sm font-medium',
+            timbreAllFilled
+              ? 'bg-slate-900 text-white hover:bg-slate-800'
+              : 'cursor-not-allowed bg-slate-100 text-slate-400',
+          ].join(' ')}
+        >
+          정답 확인하기
+        </button>
+        {showTimbreCompare && (
           <div className="mt-6 overflow-x-auto">
             <p className="text-sm font-semibold text-slate-800 mb-2">슈베르트의 실제 설계와 비교</p>
             <table className="w-full min-w-[400px] text-sm border-collapse border border-slate-200">
