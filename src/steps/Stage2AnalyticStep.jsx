@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { HelpCircle, Sparkles, Music } from 'lucide-react'
 import { useAppState } from '../state/AppStateContext.jsx'
 import {

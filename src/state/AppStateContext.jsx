@@ -120,7 +120,7 @@ export function canProceed(state, stepIndex) {
         if (!inp) return false
         if (sub === '체육' && !inp.text?.trim()) return false
         if (sub === '과학' && (!inp.phenomenon?.trim() || !inp.text?.trim())) return false
-        if (sub === '사회' && (!inp.address?.trim() || !inp.text?.trim())) return false
+        if (sub === '사회' && (!(inp.address?.trim() || inp.mapMark?.trim()) || !inp.text?.trim())) return false
         if (sub === '수학' && !inp.text?.trim()) return false
       }
       return true

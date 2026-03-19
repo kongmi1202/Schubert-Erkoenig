@@ -229,7 +229,8 @@ function Input사회({ value, onChange }) {
   const pickLocation = async (latlng) => {
     const lat = Number(latlng.lat.toFixed(6))
     const lng = Number(latlng.lng.toFixed(6))
-    onChange({ ...value, lat, lng, mapMark: `${lat}, ${lng}` })
+    const fallbackAddress = `${lat}, ${lng}`
+    onChange({ ...value, lat, lng, mapMark: fallbackAddress, address: fallbackAddress })
     setAddressLoading(true)
     setAddressError('')
     try {
@@ -237,10 +238,10 @@ function Input사회({ value, onChange }) {
       const res = await fetch(url)
       if (!res.ok) throw new Error('역지오코딩 실패')
       const data = await res.json()
-      const addr = data.display_name || `${lat}, ${lng}`
+      const addr = data.display_name || fallbackAddress
       onChange({ ...value, lat, lng, mapMark: `${lat}, ${lng}`, address: addr })
     } catch (e) {
-      setAddressError('주소를 불러오지 못했어요. 마커를 다시 선택해 주세요.')
+      setAddressError('주소를 불러오지 못해 좌표로 저장했어요.')
     } finally {
       setAddressLoading(false)
     }
