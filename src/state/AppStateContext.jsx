@@ -50,7 +50,7 @@ const initialState = {
     subjectInputs: {
       체육: { photoDataUrl: '', text: '' },
       과학: { phenomenon: '', text: '' },
-      사회: { mapMark: '', text: '' },
+      사회: { mapMark: '', address: '', lat: null, lng: null, text: '' },
       수학: { shapeDataUrl: '', text: '' },
     },
   },
@@ -117,7 +117,7 @@ export function canProceed(state, stepIndex) {
         if (!inp) return false
         if (sub === '체육' && !inp.text?.trim()) return false
         if (sub === '과학' && (!inp.phenomenon?.trim() || !inp.text?.trim())) return false
-        if (sub === '사회' && (!inp.mapMark?.trim() || !inp.text?.trim())) return false
+        if (sub === '사회' && (!inp.address?.trim() || !inp.text?.trim())) return false
         if (sub === '수학' && !inp.text?.trim()) return false
       }
       return true
