@@ -6,7 +6,7 @@ import {
   STAGE2_TIMBRE_CHARACTERS,
   STAGE2_TIMBRE_DIMENSIONS,
 } from '../state/AppStateContext.jsx'
-import { getPlotHelperSuggestion } from '../lib/openai.js'
+import { getPlotComparisonComment, getPlotHelperSuggestion } from '../lib/openai.js'
 import Tooltip from '../components/Tooltip.jsx'
 import FlipCard from '../components/FlipCard.jsx'
 
@@ -37,10 +37,14 @@ const ACCOMPANIMENT_AUDIO = {
 function SectionTitle({ children }) {
   return <h3 className="text-lg font-bold text-slate-900 mt-8 mb-3 first:mt-0">{children}</h3>}
 
-export default function Stage2AnalyticStep() {
+export default function Stage2AnalyticStep({ section = 'all' }) {
   const { state, actions } = useAppState()
   const [plotHelperLoading, setPlotHelperLoading] = useState(false)
   const [plotHelperText, setPlotHelperText] = useState('')
+  const [plotCheckLoading, setPlotCheckLoading] = useState(false)
+  const [plotCheckText, setPlotCheckText] = useState('')
+  const [plotCheckError, setPlotCheckError] = useState('')
+  const [showOverviewAnswers, setShowOverviewAnswers] = useState(false)
   const o = state.stage2?.overview || {}
   const t = state.stage2?.timbre || {}
   const a = state.stage2?.accompaniment || {}
@@ -51,6 +55,11 @@ export default function Stage2AnalyticStep() {
 
   const setOverview = (field, value) => actions.setField(`stage2.overview.${field}`, value)
   const setTimbre = (field, value) => actions.setField(`stage2.timbre.${field}`, value)
+  const overviewAllFilled = Boolean(o.narrator?.trim() && o.father?.trim() && o.son?.trim() && o.erlking?.trim())
+
+  useEffect(() => {
+    setShowOverviewAnswers(false)
+  }, [o.narrator, o.father, o.son, o.erlking])
 
   const handlePlotHelper = async () => {
     setPlotHelperLoading(true)
@@ -62,6 +71,20 @@ export default function Stage2AnalyticStep() {
       setPlotHelperText('도우미를 불러오지 못했어요. API 키를 확인해 주세요.')
     } finally {
       setPlotHelperLoading(false)
+    }
+  }
+
+  const handlePlotCheck = async () => {
+    setPlotCheckLoading(true)
+    setPlotCheckError('')
+    setPlotCheckText('')
+    try {
+      const comment = await getPlotComparisonComment(o.plot)
+      setPlotCheckText(comment)
+    } catch (e) {
+      setPlotCheckError(e.message || '정답 비교 중 오류가 났어요. API 키를 확인해 주세요.')
+    } finally {
+      setPlotCheckLoading(false)
     }
   }
 
@@ -99,7 +122,7 @@ export default function Stage2AnalyticStep() {
         </p>
       </div>
 
-      {/* 2-1 개요 */}
+      {(section === 'all' || section === 'overview') && (
       <section>
         <SectionTitle>2-1 개요</SectionTitle>
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-black/5 mb-4">
@@ -116,19 +139,19 @@ export default function Stage2AnalyticStep() {
         <p className="text-sm font-semibold text-slate-800 mb-2">등장인물 (입력 후 정답과 비교)</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
           {[
-            { key: 'narrator', label: '해설자' },
-            { key: 'father', label: '아버지' },
-            { key: 'son', label: '아들' },
-            { key: 'erlking', label: '마왕' },
-          ].map(({ key, label }) => (
+            { key: 'narrator', label: '해설자', hint: '🎙️' },
+            { key: 'father', label: '아버지', hint: '👨' },
+            { key: 'son', label: '아들', hint: '👦' },
+            { key: 'erlking', label: '마왕', hint: '👑' },
+          ].map(({ key, label, hint }) => (
             <div key={key}>
               <input
                 value={o[key] || ''}
                 onChange={(e) => setOverview(key, e.target.value)}
-                placeholder={label}
+                placeholder={hint}
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               />
-              {o[key] && (
+              {showOverviewAnswers && (
                 <p className={`mt-1 text-xs ${(o[key] || '').trim() === label ? 'text-green-600' : 'text-amber-600'}`}>
                   정답: {label}
                 </p>
@@ -136,18 +159,46 @@ export default function Stage2AnalyticStep() {
             </div>
           ))}
         </div>
+        <button
+          type="button"
+          onClick={() => setShowOverviewAnswers(true)}
+          disabled={!overviewAllFilled}
+          className={[
+            'mb-4 rounded-lg px-3 py-2 text-sm font-medium',
+            overviewAllFilled
+              ? 'bg-slate-900 text-white hover:bg-slate-800'
+              : 'cursor-not-allowed bg-slate-100 text-slate-400',
+          ].join(' ')}
+        >
+          정답 확인하기
+        </button>
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="text-sm font-semibold text-slate-800">줄거리 (서술형)</label>
-            <button
-              type="button"
-              onClick={handlePlotHelper}
-              disabled={plotHelperLoading}
-              className="inline-flex items-center gap-1 rounded-lg bg-violet-100 px-3 py-1.5 text-sm font-medium text-violet-800 hover:bg-violet-200 disabled:opacity-50"
-            >
-              <Sparkles className="h-4 w-4" />
-              {plotHelperLoading ? '처리 중…' : 'OpenAI 서술 도우미'}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handlePlotHelper}
+                disabled={plotHelperLoading}
+                className="inline-flex items-center gap-1 rounded-lg bg-violet-100 px-3 py-1.5 text-sm font-medium text-violet-800 hover:bg-violet-200 disabled:opacity-50"
+              >
+                <Sparkles className="h-4 w-4" />
+                {plotHelperLoading ? '처리 중…' : 'OpenAI 서술 도우미'}
+              </button>
+              <button
+                type="button"
+                onClick={handlePlotCheck}
+                disabled={!o.plot?.trim() || plotCheckLoading}
+                className={[
+                  'rounded-lg px-3 py-1.5 text-sm font-medium',
+                  o.plot?.trim() && !plotCheckLoading
+                    ? 'bg-slate-900 text-white hover:bg-slate-800'
+                    : 'cursor-not-allowed bg-slate-100 text-slate-400',
+                ].join(' ')}
+              >
+                {plotCheckLoading ? '비교 중…' : '정답 확인하기'}
+              </button>
+            </div>
           </div>
           <textarea
             value={o.plot || ''}
@@ -160,10 +211,22 @@ export default function Stage2AnalyticStep() {
               <span className="font-semibold">도우미 제안:</span> {plotHelperText}
             </div>
           )}
+          {plotCheckError && (
+            <div className="mt-2 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+              {plotCheckError}
+            </div>
+          )}
+          {plotCheckText && (
+            <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 whitespace-pre-line">
+              <span className="font-semibold">비교 코멘트</span>
+              <div className="mt-1">{plotCheckText}</div>
+            </div>
+          )}
         </div>
       </section>
+      )}
 
-      {/* 2-2 음색 */}
+      {(section === 'all' || section === 'timbre') && (
       <section>
         <SectionTitle>2-2 음색</SectionTitle>
         <p className="text-sm text-slate-600 mb-3">인물 2명을 선택한 뒤, 각 차원을 라디오로 선택하세요.</p>
@@ -267,8 +330,9 @@ export default function Stage2AnalyticStep() {
           </div>
         )}
       </section>
+      )}
 
-      {/* 2-3 반주 */}
+      {(section === 'all' || section === 'accompaniment') && (
       <section>
         <SectionTitle>2-3 반주</SectionTitle>
         <div className="flex flex-wrap gap-3 mb-4">
@@ -320,8 +384,9 @@ export default function Stage2AnalyticStep() {
           </div>
         )}
       </section>
+      )}
 
-      {/* 2-4 맥락 */}
+      {(section === 'all' || section === 'context') && (
       <section>
         <SectionTitle>2-4 맥락</SectionTitle>
         <p className="text-sm text-slate-600 mb-4">카드를 클릭해 뒤집어 보세요.</p>
@@ -339,6 +404,7 @@ export default function Stage2AnalyticStep() {
           확인했어요
         </button>
       </section>
+      )}
     </div>
   )
 }

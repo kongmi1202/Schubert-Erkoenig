@@ -37,6 +37,28 @@ export async function getPlotHelperSuggestion(userDraft) {
   return text
 }
 
+/** 줄거리 정답 비교: 학생 답과 핵심 정답을 비교해 코멘트 제공 */
+export async function getPlotComparisonComment(userPlot) {
+  const canonicalAnswer = [
+    '밤중에 아버지가 아픈 아들을 데리고 말을 타고 달린다.',
+    '아들은 마왕이 자신을 유혹하고 위협한다고 말하지만, 아버지는 안개나 바람 같은 자연현상으로 설명한다.',
+    '끝내 목적지에 도착했을 때 아들은 이미 죽어 있다.',
+  ].join(' ')
+
+  const text = await chatCompletion([
+    {
+      role: 'system',
+      content:
+        '당신은 초등 음악 수업 교사입니다. 학생 줄거리와 정답 핵심을 비교해 피드백을 작성하세요. 출력 형식은 반드시 3줄: 1) 일치한 내용 2) 빠진 핵심 3) 한 줄 조언. 각 줄은 30자 내외의 짧은 한국어 문장으로 작성하세요.',
+    },
+    {
+      role: 'user',
+      content: `정답 핵심: ${canonicalAnswer}\n학생 답: ${userPlot || '(미입력)'}`,
+    },
+  ])
+  return text
+}
+
 /** 4항목 평가: 이해력, 창의성, 분석력, 태도 각 5점 만점 */
 export async function evaluateLearning(state) {
   const summary = [

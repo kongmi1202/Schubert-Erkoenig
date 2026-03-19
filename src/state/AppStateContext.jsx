@@ -4,7 +4,10 @@ export const STEPS = [
   { id: 'main', title: '메인 (학번/이름)' },
   { id: 'listen', title: '감상 (영상)' },
   { id: 'sensory', title: '1단계 (감각적)' },
-  { id: 'analytic', title: '2단계 (분석적)' },
+  { id: 'analytic-overview', title: '2단계-1 (분석적: 개요)' },
+  { id: 'analytic-timbre', title: '2단계-2 (분석적: 음색)' },
+  { id: 'analytic-accompaniment', title: '2단계-3 (분석적: 반주)' },
+  { id: 'analytic-context', title: '2단계-4 (분석적: 맥락)' },
   { id: 'aesthetic', title: '3단계 (심미적)' },
   { id: 'result', title: '최종 결과 및 평가' },
 ]
@@ -122,16 +125,22 @@ export function canProceed(state, stepIndex) {
       }
       return true
     }
-    case 'analytic': {
+    case 'analytic-overview': {
       const o = state.stage2?.overview
-      const overviewOk = o?.narrator?.trim() && o?.father?.trim() && o?.son?.trim() && o?.erlking?.trim() && o?.plot?.trim()
-      const t = state.stage2?.timbre
-      const timbreOk = t?.character1 && t?.character2 &&
-        t?.c1Pitch && t?.c1Scale && t?.c1Rhythm && t?.c1Timbre &&
-        t?.c2Pitch && t?.c2Scale && t?.c2Rhythm && t?.c2Timbre
-      const accompOk = state.stage2?.accompaniment?.canvasDataUrl
-      return Boolean(overviewOk && timbreOk && accompOk)
+      return Boolean(o?.narrator?.trim() && o?.father?.trim() && o?.son?.trim() && o?.erlking?.trim() && o?.plot?.trim())
     }
+    case 'analytic-timbre': {
+      const t = state.stage2?.timbre
+      return Boolean(
+        t?.character1 && t?.character2 &&
+        t?.c1Pitch && t?.c1Scale && t?.c1Rhythm && t?.c1Timbre &&
+        t?.c2Pitch && t?.c2Scale && t?.c2Rhythm && t?.c2Timbre,
+      )
+    }
+    case 'analytic-accompaniment':
+      return Boolean(state.stage2?.accompaniment?.canvasDataUrl)
+    case 'analytic-context':
+      return Boolean(state.stage2?.contextViewed)
     case 'aesthetic':
       return Boolean(state.stage3?.summaryReason && state.stage3?.aestheticText?.trim())
     case 'result':

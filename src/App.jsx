@@ -19,8 +19,14 @@ function StepRouter() {
       return <ListenStep />
     case 'sensory':
       return <Stage1SensoryStep />
-    case 'analytic':
-      return <Stage2AnalyticStep />
+    case 'analytic-overview':
+      return <Stage2AnalyticStep section="overview" />
+    case 'analytic-timbre':
+      return <Stage2AnalyticStep section="timbre" />
+    case 'analytic-accompaniment':
+      return <Stage2AnalyticStep section="accompaniment" />
+    case 'analytic-context':
+      return <Stage2AnalyticStep section="context" />
     case 'aesthetic':
       return <Stage3AestheticStep />
     case 'result':
