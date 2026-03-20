@@ -83,6 +83,8 @@ const initialState = {
   stage3: {
     summaryReason: '',
     aestheticText: '',
+    reasonWhy: '',
+    modernMeaning: '',
   },
   evaluation: {
     scores: null,
@@ -142,7 +144,12 @@ export function canProceed(state, stepIndex) {
     case 'analytic-context':
       return Boolean(state.stage2?.contextViewed)
     case 'aesthetic':
-      return Boolean(state.stage3?.summaryReason && state.stage3?.aestheticText?.trim())
+      return Boolean(
+        state.stage3?.summaryReason &&
+        state.stage3?.aestheticText?.trim() &&
+        state.stage3?.reasonWhy?.trim() &&
+        state.stage3?.modernMeaning?.trim(),
+      )
     case 'result':
       return true
     default:

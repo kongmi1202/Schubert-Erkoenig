@@ -250,7 +250,7 @@ export default function Stage3AestheticStep() {
       </section>
 
       <section>
-        <p className="text-sm font-semibold text-slate-800 mb-2">문장 완성</p>
+        <p className="text-sm font-semibold text-slate-800 mb-2">1. 문장 완성</p>
         <p className="text-slate-700 mb-3">
           처음엔 <span className="font-medium text-slate-900">({keywords || '1단계에서 느낀 점'})</span> 느꼈는데,
           분석 후엔{' '}
@@ -274,6 +274,30 @@ export default function Stage3AestheticStep() {
           />
           라고 느꼈다.
         </p>
+
+        <div className="mt-5">
+          <p className="text-sm font-semibold text-slate-800 mb-2">
+            2. 1번 문항에서 그렇게 느낀 이유를 작성해 보세요.
+          </p>
+          <textarea
+            value={s3.reasonWhy || ''}
+            onChange={(e) => actions.setField('stage3.reasonWhy', e.target.value)}
+            placeholder="1번에서 선택한 요소와 감정이 연결된 이유를 구체적으로 적어 보세요."
+            className="min-h-24 w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900"
+          />
+        </div>
+
+        <div className="mt-5">
+          <p className="text-sm font-semibold text-slate-800 mb-2">
+            3. 200년 전 음악인 '마왕'이 오늘날 우리의 삶에 의미 있다고 느껴지는 이유는 무엇인가요?
+          </p>
+          <textarea
+            value={s3.modernMeaning || ''}
+            onChange={(e) => actions.setField('stage3.modernMeaning', e.target.value)}
+            placeholder="'마왕'이 현재의 감정, 사회, 문화와 어떻게 연결되는지 작성해 보세요."
+            className="min-h-24 w-full rounded-xl border border-slate-200 px-4 py-3 text-slate-900"
+          />
+        </div>
       </section>
     </div>
   )
