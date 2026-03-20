@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { HelpCircle, Sparkles, Music } from 'lucide-react'
+import { HelpCircle, Sparkles, Music, Eraser } from 'lucide-react'
 import { useAppState } from '../state/AppStateContext.jsx'
 import {
   STAGE2_CHARACTER_ANSWERS,
@@ -49,10 +49,14 @@ export default function Stage2AnalyticStep({ section = 'all' }) {
   const o = state.stage2?.overview || {}
   const t = state.stage2?.timbre || {}
   const a = state.stage2?.accompaniment || {}
-  const canvasRef = useRef(null)
+  const rightCanvasRef = useRef(null)
+  const leftCanvasRef = useRef(null)
   const [accompColor, setAccompColor] = useState('#1e40af')
   const [accompLineWidth, setAccompLineWidth] = useState(3)
-  const [accompDrawing, setAccompDrawing] = useState(false)
+  const [accompTool, setAccompTool] = useState('draw')
+  const [activeCanvas, setActiveCanvas] = useState(null)
+  const [showRightCompare, setShowRightCompare] = useState(false)
+  const [showLeftCompare, setShowLeftCompare] = useState(false)
 
   const setOverview = (field, value) => actions.setField(`stage2.overview.${field}`, value)
   const setTimbre = (field, value) => actions.setField(`stage2.timbre.${field}`, value)
@@ -102,29 +106,65 @@ export default function Stage2AnalyticStep({ section = 'all' }) {
     }
   }
 
-  const startAccompDraw = (e) => {
-    setAccompDrawing(true)
-    const ctx = canvasRef.current?.getContext('2d')
-    if (!ctx) return
-    const rect = canvasRef.current.getBoundingClientRect()
-    ctx.beginPath()
-    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top)
+  const getPointInCanvas = (canvas, e) => {
+    const rect = canvas.getBoundingClientRect()
+    const scaleX = canvas.width / rect.width
+    const scaleY = canvas.height / rect.height
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+    }
   }
-  const accompDraw = (e) => {
-    if (!accompDrawing) return
-    const ctx = canvasRef.current?.getContext('2d')
-    if (!ctx) return
-    const rect = canvasRef.current.getBoundingClientRect()
-    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top)
+  const startAccompDraw = (hand, e) => {
+    const canvas = hand === 'right' ? rightCanvasRef.current : leftCanvasRef.current
+    const ctx = canvas?.getContext('2d')
+    if (!canvas || !ctx) return
+    e.preventDefault()
+    const { x, y } = getPointInCanvas(canvas, e)
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    setActiveCanvas(hand)
+  }
+  const accompDraw = (hand, e) => {
+    if (activeCanvas !== hand) return
+    const canvas = hand === 'right' ? rightCanvasRef.current : leftCanvasRef.current
+    const ctx = canvas?.getContext('2d')
+    if (!canvas || !ctx) return
+    e.preventDefault()
+    const { x, y } = getPointInCanvas(canvas, e)
+    ctx.lineTo(x, y)
+    ctx.globalCompositeOperation = accompTool === 'erase' ? 'destination-out' : 'source-over'
     ctx.strokeStyle = accompColor
     ctx.lineWidth = accompLineWidth
     ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
     ctx.stroke()
   }
-  const endAccompDraw = () => {
-    setAccompDrawing(false)
-    const canvas = canvasRef.current
-    if (canvas) actions.setField('stage2.accompaniment.canvasDataUrl', canvas.toDataURL('image/png'))
+  const endAccompDraw = (hand) => {
+    if (activeCanvas !== hand) return
+    setActiveCanvas(null)
+    const rightCanvas = rightCanvasRef.current
+    const leftCanvas = leftCanvasRef.current
+    const rightDataUrl = rightCanvas ? rightCanvas.toDataURL('image/png') : ''
+    const leftDataUrl = leftCanvas ? leftCanvas.toDataURL('image/png') : ''
+    actions.setField('stage2.accompaniment.rightCanvasDataUrl', rightDataUrl)
+    actions.setField('stage2.accompaniment.leftCanvasDataUrl', leftDataUrl)
+    actions.setField('stage2.accompaniment.canvasDataUrl', rightDataUrl || leftDataUrl)
+    if (hand === 'right') setShowRightCompare(false)
+    if (hand === 'left') setShowLeftCompare(false)
+  }
+  const clearCanvas = (hand) => {
+    const canvas = hand === 'right' ? rightCanvasRef.current : leftCanvasRef.current
+    const ctx = canvas?.getContext('2d')
+    if (!canvas || !ctx) return
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    const rightDataUrl = hand === 'right' ? '' : (rightCanvasRef.current?.toDataURL('image/png') || '')
+    const leftDataUrl = hand === 'left' ? '' : (leftCanvasRef.current?.toDataURL('image/png') || '')
+    actions.setField('stage2.accompaniment.rightCanvasDataUrl', rightDataUrl)
+    actions.setField('stage2.accompaniment.leftCanvasDataUrl', leftDataUrl)
+    actions.setField('stage2.accompaniment.canvasDataUrl', rightDataUrl || leftDataUrl)
+    if (hand === 'right') setShowRightCompare(false)
+    if (hand === 'left') setShowLeftCompare(false)
   }
 
   return (
@@ -384,32 +424,117 @@ export default function Stage2AnalyticStep({ section = 'all' }) {
             <Music className="h-4 w-4" /> 왼손 반주 듣기
           </button>
         </div>
-        <p className="text-sm font-semibold text-slate-800 mb-2">가락선 그리기 (펜 굵기·색상 조절)</p>
-        <div className="flex flex-wrap gap-2 mb-2">
-          {[2, 4, 6].map((w) => (
-            <button key={w} type="button" onClick={() => setAccompLineWidth(w)} className={`rounded px-2 py-1 text-xs ${accompLineWidth === w ? 'bg-slate-900 text-white' : 'bg-slate-200'}`}>굵기 {w}</button>
-          ))}
+        <p className="text-sm font-semibold text-slate-800 mb-2">가락선 그리기 (펜 굵기 슬라이더·색상·지우개)</p>
+        <div className="mb-2">
+          <label className="block text-xs font-medium text-slate-700 mb-1" htmlFor="accomp-width-slider">
+            펜 굵기: {accompLineWidth}
+          </label>
+          <input
+            id="accomp-width-slider"
+            type="range"
+            min={1}
+            max={24}
+            step={1}
+            value={accompLineWidth}
+            onChange={(e) => setAccompLineWidth(Number(e.target.value))}
+            className="w-full max-w-sm accent-slate-800"
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-2 mb-4">
           {['#1e40af', '#b91c1c', '#15803d'].map((c) => (
             <button key={c} type="button" onClick={() => setAccompColor(c)} className={`h-6 w-6 rounded-full border-2 ${accompColor === c ? 'border-slate-900' : 'border-slate-300'}`} style={{ backgroundColor: c }} />
           ))}
+          <button
+            type="button"
+            onClick={() => setAccompTool((prev) => (prev === 'erase' ? 'draw' : 'erase'))}
+            className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs ${accompTool === 'erase' ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-700'}`}
+          >
+            <Eraser className="h-3.5 w-3.5" />
+            {accompTool === 'erase' ? '지우개 사용 중' : '지우개'}
+          </button>
         </div>
-        <canvas
-          ref={canvasRef}
-          width={400}
-          height={200}
-          className="block w-full max-w-lg rounded-xl border border-slate-200 bg-white"
-          onMouseDown={startAccompDraw}
-          onMouseMove={accompDraw}
-          onMouseUp={endAccompDraw}
-          onMouseLeave={endAccompDraw}
-        />
-        {a.canvasDataUrl && (
-          <div className="mt-4">
-            <p className="text-sm font-semibold text-slate-800 mb-2">실제 악보와 비교</p>
-            <p className="text-xs text-slate-500 mb-2">(아래는 예시 이미지입니다. 실제 악보 이미지 URL로 교체 가능합니다.)</p>
-            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Franz_Schubert_-_Erlk%C3%B6nig_-_op._1%2C_D._328_%281815%29_-_first_page.jpg/440px-Franz_Schubert_-_Erlk%C3%B6nig_-_op._1%2C_D._328_%281815%29_-_first_page.jpg" alt="마왕 악보" className="max-w-full rounded-lg border border-slate-200" />
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="rounded-xl border border-slate-200 p-3">
+            <p className="text-sm font-semibold text-slate-800 mb-2">오른손 가락선 악보</p>
+            <canvas
+              ref={rightCanvasRef}
+              width={400}
+              height={200}
+              className="block w-full rounded-xl border border-slate-200 bg-white touch-none"
+              onPointerDown={(e) => startAccompDraw('right', e)}
+              onPointerMove={(e) => accompDraw('right', e)}
+              onPointerUp={() => endAccompDraw('right')}
+              onPointerLeave={() => endAccompDraw('right')}
+            />
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => clearCanvas('right')}
+                className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-200"
+              >
+                전체 지우기
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowRightCompare(true)}
+                disabled={!a.rightCanvasDataUrl}
+                className={[
+                  'rounded-lg px-3 py-1.5 text-sm font-medium',
+                  a.rightCanvasDataUrl ? 'bg-slate-900 text-white hover:bg-slate-800' : 'cursor-not-allowed bg-slate-100 text-slate-400',
+                ].join(' ')}
+              >
+                정답 확인하기
+              </button>
+            </div>
+            {showRightCompare && a.rightCanvasDataUrl && (
+              <div className="mt-4">
+                <p className="text-sm font-semibold text-slate-800 mb-2">오른손 실제 악보와 비교</p>
+                <p className="text-xs text-slate-500 mb-2">(아래는 예시 이미지입니다. 실제 악보 이미지 URL로 교체 가능합니다.)</p>
+                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Franz_Schubert_-_Erlk%C3%B6nig_-_op._1%2C_D._328_%281815%29_-_first_page.jpg/440px-Franz_Schubert_-_Erlk%C3%B6nig_-_op._1%2C_D._328_%281815%29_-_first_page.jpg" alt="마왕 악보 오른손 비교" className="max-w-full rounded-lg border border-slate-200" />
+              </div>
+            )}
           </div>
-        )}
+          <div className="rounded-xl border border-slate-200 p-3">
+            <p className="text-sm font-semibold text-slate-800 mb-2">왼손 가락선 악보</p>
+            <canvas
+              ref={leftCanvasRef}
+              width={400}
+              height={200}
+              className="block w-full rounded-xl border border-slate-200 bg-white touch-none"
+              onPointerDown={(e) => startAccompDraw('left', e)}
+              onPointerMove={(e) => accompDraw('left', e)}
+              onPointerUp={() => endAccompDraw('left')}
+              onPointerLeave={() => endAccompDraw('left')}
+            />
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => clearCanvas('left')}
+                className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-200"
+              >
+                전체 지우기
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowLeftCompare(true)}
+                disabled={!a.leftCanvasDataUrl}
+                className={[
+                  'rounded-lg px-3 py-1.5 text-sm font-medium',
+                  a.leftCanvasDataUrl ? 'bg-slate-900 text-white hover:bg-slate-800' : 'cursor-not-allowed bg-slate-100 text-slate-400',
+                ].join(' ')}
+              >
+                정답 확인하기
+              </button>
+            </div>
+            {showLeftCompare && a.leftCanvasDataUrl && (
+              <div className="mt-4">
+                <p className="text-sm font-semibold text-slate-800 mb-2">왼손 실제 악보와 비교</p>
+                <p className="text-xs text-slate-500 mb-2">(아래는 예시 이미지입니다. 실제 악보 이미지 URL로 교체 가능합니다.)</p>
+                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Franz_Schubert_-_Erlk%C3%B6nig_-_op._1%2C_D._328_%281815%29_-_first_page.jpg/440px-Franz_Schubert_-_Erlk%C3%B6nig_-_op._1%2C_D._328_%281815%29_-_first_page.jpg" alt="마왕 악보 왼손 비교" className="max-w-full rounded-lg border border-slate-200" />
+              </div>
+            )}
+          </div>
+        </div>
       </section>
       )}
 
